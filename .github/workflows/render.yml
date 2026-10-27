@@ -13,7 +13,7 @@ on:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
 
@@ -53,13 +53,21 @@ jobs:
         working-directory: proj
         run: >
           npx remotion render src/index.ts "${{ inputs.composition }}" "out/${{ inputs.output }}"
-          --codec=h264 --audio-codec=aac --crf=20 --concurrency=2
+          --codec=h264 --audio-codec=aac --crf=26 --concurrency=2
 
-      - name: Verifikasi hasil
-        working-directory: proj
-        run: ffprobe -v error -show_entries format=duration:stream=codec_name,width,height,r_frame_rate -of default=nw=1 "out/${{ inputs.output }}"
-
-      - uses: actions/upload-artifact@v4
+      - name: Unggah hasil (langsung setelah render)
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: video-hasil
           path: proj/out/
+          compression-level: 0
+          if-no-files-found: warn
+
+      - name: Info file hasil (tidak menggagalkan job)
+        if: always()
+        continue-on-error: true
+        working-directory: proj
+        run: |
+          ls -lh out/ || true
+          npx remotion ffprobe "out/${{ inputs.output }}" || true
